@@ -5,32 +5,35 @@ LABEL maintainer="Julien Diot <juliendiot42@gmail.com>"
 RUN apt-get update && apt-get install -y \
   curl 
 
+# create a new directory for the app code
+RUN mkdir /myShinyApp
+
+# use unpriviledged user "shinyAppUser" instead of "root"
+RUN addgroup --system shinyAppUser \
+    && adduser --system --ingroup shinyAppUser shinyAppUser
+RUN usermod -a -G staff shinyAppUser # add user to staff group to install Rpkgs
+RUN chown shinyAppUser:shinyAppUser /myShinyApp # give him access to app dir
+USER shinyAppUser
+
+# create and move to the directory containing the shinyAppUser
+WORKDIR /myShinyApp
+
 # install `renv`
 ENV RENV_VERSION 0.15.5
 RUN R -e "install.packages('remotes', repos = c(CRAN = 'https://cloud.r-project.org'))"
 RUN R -e "remotes::install_github('rstudio/renv@${RENV_VERSION}')"
 
-# create and move to the directory containing the shinyAppUser
-WORKDIR /myShinyApp
 
 # install packages dependencies with `renv`
 # copy renv information:
-COPY renv renv
-COPY renv.lock renv.lock
-COPY .Rprofile .Rprofile
+COPY --chown=shinyAppUser:shinyAppUser renv renv
+COPY --chown=shinyAppUser:shinyAppUser renv.lock renv.lock
+COPY --chown=shinyAppUser:shinyAppUser .Rprofile .Rprofile
 # install deps:
 RUN R -e 'renv::restore()'
-# isolate renv from the cache (own by `root`):
-RUN R -e 'renv::isolate()'
 
 # get app code from the host
-COPY . .
-
-# use unpriviledged user "shinyAppUser" instead of "root"
-RUN addgroup --system shinyAppUser \
-    && adduser --system --ingroup shinyAppUser shinyAppUser
-RUN chown shinyAppUser:shinyAppUser -R .
-USER shinyAppUser
+COPY --chown=shinyAppUser:shinyAppUser . .
 
 # run app on container at startup
 EXPOSE 3838
