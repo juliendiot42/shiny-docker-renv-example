@@ -8,7 +8,7 @@
 #
 
 library(shiny)
-library(plotly)
+library(data.table)
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
@@ -28,7 +28,8 @@ ui <- fluidPage(
 
         # Show a plot of the generated distribution
         mainPanel(
-           plotlyOutput("distPlot")
+           plotOutput("distPlot"),
+           dataTableOutput("dataTable")
         )
     )
 )
@@ -36,30 +37,19 @@ ui <- fluidPage(
 # Define server logic required to draw a histogram
 server <- function(input, output) {
 
-    output$distPlot <- renderPlotly({
+    output$distPlot <- renderPlot({
         # generate bins based on input$bins from ui.R
         x    <- faithful[, 2]
-        bins <- input$bins + 1
+        bins <- seq(min(x), max(x), length.out = input$bins + 1)
 
-        #hist
-        plot_ly(x = x,
-                type = "histogram",
-                histnorm = "",# "" | "percent" | "probability"
-                name = "Histogram of waiting times",
-                nbinsx = bins,
-                hovertemplate = "x: (%{x})\ny: %{y}",
-                marker = list(color = "green",
-                              line = list(color = "black",
-                                          width = 1))
-                ) %>%
-          layout(
-            title = "x",
-            xaxis = list(title = "Waiting time to next eruption (in mins)"),
-            yaxis = list(title = "Count", # "percent" | "probability"
-                          zeroline = TRUE)
-          )
-        
-        
+        # draw the histogram with the specified number of bins
+        hist(x, breaks = bins, col = 'darkgray', border = 'white',
+             xlab = 'Waiting time to next eruption (in mins)',
+             main = 'Histogram of waiting times')
+    })
+    
+    output$dataTable <- renderDataTable({
+      data.table(as.data.frame(faithful))
     })
 }
 
